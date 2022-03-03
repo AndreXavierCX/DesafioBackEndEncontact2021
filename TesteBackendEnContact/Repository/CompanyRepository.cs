@@ -21,49 +21,84 @@ namespace TesteBackendEnContact.Repository
             this.databaseConfig = databaseConfig;
         }
 
+        //ver com o gabriel se a logica ta certa e reformulado o using
         public async Task<ICompany> SaveAsync(ICompany company)
         {
-            using var connection = new SqliteConnection(databaseConfig.ConnectionString);
-            var dao = new CompanyDao(company);
+            using (var connection = new SqliteConnection(databaseConfig.ConnectionString))
+            {
+                var dao = new CompanyDao(company);
 
-            if (dao.Id == 0)
-                dao.Id = await connection.InsertAsync(dao);
-            else
-                await connection.UpdateAsync(dao);
+                if (dao.Id == 0)
+                {
+                    dao.Id = await connection.InsertAsync(dao);
+                }
 
-            return dao.Export();
+                return dao.Export();
+            }
         }
 
+
+        // errado
         public async Task DeleteAsync(int id)
         {
-            using var connection = new SqliteConnection(databaseConfig.ConnectionString);
-            using var transaction = connection.BeginTransaction();
-
-            var sql = new StringBuilder();
-            sql.AppendLine("DELETE FROM Company WHERE Id = @id;");
-            sql.AppendLine("UPDATE Contact SET CompanyId = null WHERE CompanyId = @id;");
-
-            await connection.ExecuteAsync(sql.ToString(), new { id }, transaction);
+            using (var connection = new SqliteConnection(databaseConfig.ConnectionString))
+            {
+                connection.Open();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    var sql = new StringBuilder();
+                    sql.AppendLine("DELETE FROM Company WHERE Id = @id;");
+                    sql.AppendLine("UPDATE Contact SET CompanyId = null WHERE CompanyId = @id;");
+                    try
+                    {
+                        await connection.ExecuteAsync(sql.ToString(), new { id }, transaction);
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                    }
+                    
+                }
+                connection.Close();
+            }
         }
 
+        //reformatado o codigo
         public async Task<IEnumerable<ICompany>> GetAllAsync()
         {
-            using var connection = new SqliteConnection(databaseConfig.ConnectionString);
+            using (var connection = new SqliteConnection(databaseConfig.ConnectionString))
+            {
+                var query = "SELECT * FROM Company";
+                var result = await connection.QueryAsync<CompanyDao>(query);
 
-            var query = "SELECT * FROM Company";
-            var result = await connection.QueryAsync<CompanyDao>(query);
-
-            return result?.Select(item => item.Export());
+                return result?.Select(item => item.Export());
+            }
         }
 
         public async Task<ICompany> GetAsync(int id)
         {
-            using var connection = new SqliteConnection(databaseConfig.ConnectionString);
+            using (var connection = new SqliteConnection(databaseConfig.ConnectionString))
+            {
 
-            var query = "SELECT * FROM Conpany where Id = @id";
-            var result = await connection.QuerySingleOrDefaultAsync<CompanyDao>(query, new { id });
+                var query = "SELECT * FROM Company where Id = @id";
+                var result = await connection.QuerySingleOrDefaultAsync<CompanyDao>(query, new { id });
 
-            return result?.Export();
+                return result?.Export();
+            }
+        }
+
+        public async Task<ICompany> UpdateAsync(ICompany company)
+        {
+            using (var connection = new SqliteConnection(databaseConfig.ConnectionString))
+            {
+
+                var dao = new CompanyDao(company);
+
+                await connection.UpdateAsync(dao);
+
+                return dao.Export();
+            }
         }
     }
 

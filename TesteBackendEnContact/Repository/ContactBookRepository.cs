@@ -23,23 +23,30 @@ namespace TesteBackendEnContact.Repository
 
         public async Task<IContactBook> SaveAsync(IContactBook contactBook)
         {
-            using var connection = new SqliteConnection(databaseConfig.ConnectionString);
-            var dao = new ContactBookDao(contactBook);
+            using (var connection = new SqliteConnection(databaseConfig.ConnectionString))
+            {
+                var dao = new ContactBookDao(contactBook);
 
-            dao.Id = await connection.InsertAsync(dao);
+                if (dao.Id == 0)
+                {
+                    dao.Id = await connection.InsertAsync(dao);
+                }
 
-            return dao.Export();
+                return dao.Export();
+            }
         }
 
 
         public async Task DeleteAsync(int id)
         {
-            using var connection = new SqliteConnection(databaseConfig.ConnectionString);
+            using (var connection = new SqliteConnection(databaseConfig.ConnectionString))
+            {
 
-            // TODO
-            var sql = "";
+                // TODO
+                var sql = "DELETE FROM ContactBook WHERE Id = @id;";
 
-            await connection.ExecuteAsync(sql);
+                await connection.ExecuteAsync(sql, new { id });
+            }
         }
 
 
@@ -47,26 +54,41 @@ namespace TesteBackendEnContact.Repository
 
         public async Task<IEnumerable<IContactBook>> GetAllAsync()
         {
-            using var connection = new SqliteConnection(databaseConfig.ConnectionString);
-
-            var query = "SELECT * FROM ContactBook";
-            var result = await connection.QueryAsync<ContactBookDao>(query);
-
-            var returnList = new List<IContactBook>();
-
-            foreach (var AgendaSalva in result.ToList())
+            using (var connection = new SqliteConnection(databaseConfig.ConnectionString))
             {
-                IContactBook Agenda = new ContactBook(AgendaSalva.Id, AgendaSalva.Name.ToString());
-                returnList.Add(Agenda);
-            }
 
-            return returnList.ToList();
+                var query = "SELECT * FROM ContactBook";
+                var result = await connection.QueryAsync<ContactBookDao>(query);
+
+                var returnList = new List<IContactBook>();
+
+                foreach (var AgendaSalva in result.ToList())
+                {
+                    IContactBook Agenda = new ContactBook(AgendaSalva.Id, AgendaSalva.Name.ToString());
+                    returnList.Add(Agenda);
+                }
+
+                return returnList.ToList();
+            }
         }
         public async Task<IContactBook> GetAsync(int id)
         {
             var list = await GetAllAsync();
 
             return list.ToList().Where(item => item.Id == id).FirstOrDefault();
+        }
+
+        public async Task<IContactBook> UpdateAsync(IContactBook contactBook)
+        {
+            using (var connection = new SqliteConnection(databaseConfig.ConnectionString))
+            {
+
+                var dao = new ContactBookDao(contactBook);
+
+                await connection.UpdateAsync(dao);
+
+                return dao.Export();
+            }
         }
     }
 
@@ -84,7 +106,7 @@ namespace TesteBackendEnContact.Repository
         public ContactBookDao(IContactBook contactBook)
         {
             Id = contactBook.Id;
-            Name = Name;
+            Name = contactBook.Name;
         }
 
         public IContactBook Export() => new ContactBook(Id, Name);

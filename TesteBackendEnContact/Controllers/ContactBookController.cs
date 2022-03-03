@@ -42,5 +42,11 @@ namespace TesteBackendEnContact.Controllers
         {
             return await contactBookRepository.GetAsync(id);
         }
+
+        [HttpPut]
+        public async Task<IContactBook> Put(ContactBook contactBook, [FromServices] IContactBookRepository contactBookRepository)
+        {
+            return await contactBookRepository.UpdateAsync(contactBook); 
+        }
     }
 }
